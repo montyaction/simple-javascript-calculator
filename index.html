@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JavaScript Calculator</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+
+    <div id="calculator">
+      <!-- <div class="formulaScreen">7 - 7 =</div> -->
+      <div class="outputScreen" id="display">0</div>
+      <button id="clear">AC</button>
+      <button id="divide">/</button>
+      <button id="multiply">X</button>
+      <button id="seven">7</button>
+      <button id="eight">8</button>
+      <button id="nine">9</button>
+      <button id="subtract">-</button>
+      <button id="four">4</button>
+      <button id="five">5</button>
+      <button id="six">6</button>
+      <button id="add">+</button>
+      <button id="one">1</button>
+      <button id="two">2</button>
+      <button id="three">3</button>
+      <button id="equals">=</button>
+      <button id="zero">0</button>
+      <button id="decimal">.</button>
+    </div>
+    
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        "use strict";
+        const display = document.getElementById('display');
+        const clearButton = document.getElementById('clear');
+        const divideButton = document.getElementById('divide');
+        const multiplyButton = document.getElementById('multiply');
+        const subtractButton = document.getElementById('subtract');
+        const addButton = document.getElementById('add');
+        const equalsButton = document.getElementById('equals');
+        const decimalButton = document.getElementById('decimal');
+        const numberButtons = document.querySelectorAll('#calculator button:not(#clear):not(#divide):not(#multiply):not(#subtract):not(#add):not(#equals):not(#decimal)');
+
+        let currentNumber = '0',
+            previousNumber = '',
+            operator = '';
+
+        function updateDisplay() {
+          display.textContent = currentNumber;
+        }
+
+        function clear() {
+          currentNumber = '0';
+          previousNumber = '';
+          operator = '';
+          updateDisplay();
+        }
+
+        function appendNumber(number) {
+          if (currentNumber === '0' && number === '0') {
+            return;
+          }
+          if (currentNumber === '0' && number !== '0') {
+            currentNumber = '';
+          }
+          currentNumber += number;
+          updateDisplay();
+        }
+
+        function appendDecimal() {
+          if (!currentNumber.includes('.')) {
+            currentNumber += '.';
+            updateDisplay();
+          }
+        }
+
+        function performOperation() {
+          if (previousNumber !== '') {
+            const num1 = parseFloat(previousNumber);
+            const num2 = parseFloat(currentNumber);
+            let result = 0;
+
+            switch (operator) {
+              case 'add':
+                result = num1 + num2;
+                break;
+              case 'subtract':
+                result = num1 - num2;
+                break;
+              case 'multiply':
+                result = num1 * num2;
+                break;
+              case 'divide':
+                result = num1 / num2;
+                break;
+            }
+
+            currentNumber = result.toString();
+            previousNumber = '';
+            operator = '';
+            updateDisplay();
+          }
+          updateDisplay();
+        }
+
+        function setOperator(newOperator) {
+          if (currentNumber !== '') {
+            if (previousNumber !== '' && operator !== '') {
+              performOperation();
+            } else {
+              previousNumber = currentNumber;
+              currentNumber = '';
+            }
+          }
+          operator = newOperator;
+        }
+
+        clearButton.addEventListener('click', clear);
+        divideButton.addEventListener('click', () => setOperator('divide'));
+        multiplyButton.addEventListener('click', () => setOperator('multiply'));
+        subtractButton.addEventListener('click', () => setOperator('subtract'));
+        addButton.addEventListener('click', () => setOperator('add'));
+        equalsButton.addEventListener('click', performOperation);
+        decimalButton.addEventListener('click', appendDecimal);
+
+        numberButtons.forEach(button => {
+          button.addEventListener('click', () => {
+            appendNumber(button.textContent);
+          });
+        });
+      });
+    </script>
+    <script src="https://cdn.freecodecamp.org/testable-projects-fcc/v1/bundle.js"></script>
+  </body>
+</html>
