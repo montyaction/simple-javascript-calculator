@@ -9,11 +9,11 @@
   <body>
 
     <div id="calculator">
-      <!-- <div class="formulaScreen">7 - 7 =</div> -->
+      <div class="formulaScreen" id="formulaDisplay">0</div>
       <div class="outputScreen" id="display">0</div>
       <button id="clear">AC</button>
       <button id="divide">/</button>
-      <button id="multiply">X</button>
+      <button id="multiply">x</button>
       <button id="seven">7</button>
       <button id="eight">8</button>
       <button id="nine">9</button>
@@ -33,6 +33,7 @@
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         "use strict";
+        const formulaScreen = document.getElementById('formulaDisplay');
         const display = document.getElementById('display');
         const clearButton = document.getElementById('clear');
         const divideButton = document.getElementById('divide');
@@ -43,92 +44,156 @@
         const decimalButton = document.getElementById('decimal');
         const numberButtons = document.querySelectorAll('#calculator button:not(#clear):not(#divide):not(#multiply):not(#subtract):not(#add):not(#equals):not(#decimal)');
 
-        let currentNumber = '0',
-            previousNumber = '',
-            operator = '';
+        const isOperator = /[x/+-]/,
+              endsWithOperator = /[x+-]$/,
+              endsWithNegativeSign = /\d[x/+-]{1}-$/;
+
+        let currentValue = '0',
+            previousValue = '0',
+            formula = '0',
+            currentSign = 'pos',
+            lastClicked = '',
+            evaluated = false;
 
         function updateDisplay() {
-          display.textContent = currentNumber;
+          console.log("Current Value:", currentValue);
+          console.log("Formula:", formula);
+
+          display.textContent = currentValue;
+          formulaScreen.textContent = formula;
         }
 
-        function clear() {
-          currentNumber = '0';
-          previousNumber = '';
-          operator = '';
-          updateDisplay();
-        }
+        function maxDigitWarning(){
+          currentValue = 'Digit Limit Met';
+          previousValue = currentValue;
 
-        function appendNumber(number) {
-          if (currentNumber === '0' && number === '0') {
-            return;
-          }
-          if (currentNumber === '0' && number !== '0') {
-            currentNumber = '';
-          }
-          currentNumber += number;
-          updateDisplay();
-        }
-
-        function appendDecimal() {
-          if (!currentNumber.includes('.')) {
-            currentNumber += '.';
+          setTimeout(() => {
+            currentValue = previousValue;
             updateDisplay();
-          }
+          }, 1000);
         }
 
-        function performOperation() {
-          if (previousNumber !== '') {
-            const num1 = parseFloat(previousNumber);
-            const num2 = parseFloat(currentNumber);
-            let result = 0;
+        function handleEvaluate() {
+          if (!currentValue.includes("Limit")) {
+            let expression = formula;
 
-            switch (operator) {
-              case 'add':
-                result = num1 + num2;
-                break;
-              case 'subtract':
-                result = num1 - num2;
-                break;
-              case 'multiply':
-                result = num1 * num2;
-                break;
-              case 'divide':
-                result = num1 / num2;
-                break;
+            while (endsWithOperator.test(expression)) {
+              expression = expression.slice(0, -1);
             }
 
-            currentNumber = result.toString();
-            previousNumber = '';
-            operator = '';
+            // expression = expression.replace(/x/g, "*").replace(/--/g, "+");
+            expression = expression.replace(/x/g, "*").replace(/-/g, "-").replace("--", "-");
+
+            let answer = Math.round(1e12 * eval(expression)) / 1e12;
+
+            currentValue = answer.toString();
+            // formula = expression.replace(/\*/g, '.') + '=' + answer;
+            formula = expression.replace(/\*/g, '.').replace(/-/g, "-").replace(/(x|\/|\+)-/, "$1-").replace(/^-/, "-") + '=' + answer;
+            previousValue = answer;
+            evaluated = true;
             updateDisplay();
           }
-          updateDisplay();
         }
 
-        function setOperator(newOperator) {
-          if (currentNumber !== '') {
-            if (previousNumber !== '' && operator !== '') {
-              performOperation();
+        function handleOperators(operator) {
+          if (!currentValue.includes("Limit")) {
+
+            currentValue = operator;
+            evaluated = false;
+
+            if (evaluated) {
+              formula = previousValue + operator;
+            } else if (endsWithOperator.test(formula)) {
+              if (endsWithNegativeSign.test(formula)) {
+                if (operator !== '-') {
+                  formula = previousValue + operator;
+                }
+              } else {
+                formula = endsWithNegativeSign.test(formula + operator)
+                  ? formula
+                  : previousValue + operator;
+              }
             } else {
-              previousNumber = currentNumber;
-              currentNumber = '';
+              previousValue = formula;
+              formula = formula + operator;
             }
+
+            updateDisplay();
           }
-          operator = newOperator;
         }
 
-        clearButton.addEventListener('click', clear);
-        divideButton.addEventListener('click', () => setOperator('divide'));
-        multiplyButton.addEventListener('click', () => setOperator('multiply'));
-        subtractButton.addEventListener('click', () => setOperator('subtract'));
-        addButton.addEventListener('click', () => setOperator('add'));
-        equalsButton.addEventListener('click', performOperation);
-        decimalButton.addEventListener('click', appendDecimal);
+        function handleNumbers(num) {
+          if (!currentValue.includes("Limit")) {
+            // evaluated = false;
+            if (currentValue.length > 21) {
+              maxDigitWarning();
+            } else {
+              if (evaluated) {
+                currentValue = num;
+                formula = num !== '0' ? num : '';
+              } else {
+                currentValue = 
+                currentValue === '0' || isOperator.test(currentValue)
+                ? num
+                : currentValue + num;
+                
+                formula = 
+                currentValue === '0' && num === '0'
+                ? ''
+                : /([^.0-9]0|^0)$/.test(formula)
+                ? formula.slice(0, -1) + num
+                : formula + num;
+              }
+            }
+
+            updateDisplay();
+          }
+        }
+
+        function handleDecimal() {
+          if (evaluated) {
+            currentValue = '0.';
+            formula = '0.';
+            evaluated = false;
+            updateDisplay();
+          } else if (!currentValue.includes('.') && !currentValue.includes("Limit")) {
+            evaluated = false;
+
+            if (currentValue.length > 21) {
+              maxDigitWarning();
+            } else if (endsWithOperator.test(formula) || (currentValue === '0' && formula === '')){
+              currentValue = '0.';
+              formula = formula + '0.';
+            } else {
+              const match = formula.match(/(-?\d+\.?\d*)$/);
+              currentValue = (match ? match[0] : '0') + '.';
+              formula = formula + '.';
+            }
+
+            updateDisplay();
+          }
+        }
+
+        function initialize() {
+          currentValue = '0';
+          previousValue = '0';
+          formula = '0';
+          currentSign = 'pos';
+          lastClicked = '';
+          evaluated = false;
+          updateDisplay();
+        }
+
+        clearButton.addEventListener('click', initialize);
+        divideButton.addEventListener('click', () => handleOperators(divideButton.textContent));
+        multiplyButton.addEventListener('click', () => handleOperators(multiplyButton.textContent));
+        subtractButton.addEventListener('click', () => handleOperators(subtractButton.textContent));
+        addButton.addEventListener('click', () => handleOperators(addButton.textContent));
+        equalsButton.addEventListener('click', handleEvaluate);
+        decimalButton.addEventListener('click', handleDecimal);
 
         numberButtons.forEach(button => {
-          button.addEventListener('click', () => {
-            appendNumber(button.textContent);
-          });
+          button.addEventListener('click', () => handleNumbers(button.textContent));
         });
       });
     </script>
